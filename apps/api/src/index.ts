@@ -2,6 +2,8 @@ import cors from "cors";
 import dotenv from "dotenv";
 import express from "express";
 import mongoose from "mongoose";
+import { LinkModel } from "./models/link.model";
+import { linkRouter } from "./routes/links";
 
 dotenv.config();
 
@@ -16,6 +18,8 @@ if (!databaseUrl) {
 app.use(cors());
 app.use(express.json());
 
+app.use("/api/links", linkRouter);
+
 app.get("/api/health", (request, response) => {
   response.status(200).json({
     status: "ok",
@@ -23,8 +27,23 @@ app.get("/api/health", (request, response) => {
   });
 });
 
-async function startServer() {
-  await mongoose.connect(databaseUrl);
+app.get("/:code", async (request, response) => {
+  const link = await LinkModel.findOneAndUpdate(
+    { code: request.params.code },
+    { $inc: { clicks: 1 } },
+    { returnDocument: "after" },
+  );
+
+  if (!link) {
+    return response.status(404).json({
+      error: "Short link not found.",
+    });
+  }
+
+  return response.redirect(302, link.destination);
+});
+async function startServer(url: string) {
+  await mongoose.connect(url);
   console.log("MongoDB connected");
 
   app.listen(port, () => {
@@ -32,8 +51,12 @@ async function startServer() {
   });
 }
 
-startServer().catch((error: unknown) => {
+startServer(databaseUrl).catch((error: unknown) => {
   console.error("Failed to start API", error);
   process.exit(1);
 });
+
+
+
+
 
