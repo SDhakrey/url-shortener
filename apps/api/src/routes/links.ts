@@ -5,6 +5,13 @@ import { LinkModel } from "../models/link.model";
 
 const createLinkSchema = z.object({
   destination: z.string().url().max(2048),
+  alias: z
+    .string()
+    .trim()
+    .min(4)
+    .max(24)
+    .regex(/^[a-zA-Z0-9-]+$/, "Use letters, numbers, and hyphens only.")
+    .optional(),
 });
 
 export const linkRouter = Router();
@@ -18,15 +25,21 @@ linkRouter.post("/", async (request, response) => {
 
   if (!input.success) {
     return response.status(400).json({
-      error: "A valid destination URL is required.",
+      error: "Enter a valid destination URL and optional alias.",
     });
   }
 
   for (let attempt = 0; attempt < 5; attempt += 1) {
-    const code = createCode();
+    const code = input.data.alias ?? createCode();
     const existing = await LinkModel.exists({ code });
 
     if (existing) {
+      if (input.data.alias) {
+        return response.status(409).json({
+          error: "This custom alias is already in use.",
+        });
+      }
+
       continue;
     }
 
@@ -47,4 +60,17 @@ linkRouter.post("/", async (request, response) => {
   return response.status(500).json({
     error: "Unable to generate a unique code.",
   });
+});
+linkRouter.delete("/:code", async (request, response) => {
+  const link = await LinkModel.findOneAndDelete({
+    code: request.params.code,
+  });
+
+  if (!link) {
+    return response.status(404).json({
+      error: "Short link not found.",
+    });
+  }
+
+  return response.status(204).send();
 });

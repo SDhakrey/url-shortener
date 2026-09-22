@@ -9,7 +9,7 @@ const linkSchema = new Schema(
       unique: true,
       trim: true,
       minlength: 4,
-      maxlength: 12,
+      maxlength: 24,
     },
     destination: {
       type: String,
@@ -30,3 +30,4 @@ const linkSchema = new Schema(
 export type Link = InferSchemaType<typeof linkSchema>;
 
 export const LinkModel = model("Link", linkSchema);
+
